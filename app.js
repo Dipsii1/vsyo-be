@@ -1,0 +1,49 @@
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import cookieParser from 'cookie-parser';
+import logger from 'morgan';
+import 'dotenv/config';
+
+// import routes
+import indexRouter from './src/routes/index.js';
+import authRouter from './src/routes/authRoutes.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+
+// View engine setup (gunakan pug, bukan jade)
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'pug');
+
+// Middlewares
+app.use(logger('dev'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Routes
+app.use('/', indexRouter);
+app.use('/api/v1/auth', authRouter);
+
+// Error handlers
+app.use((req, res, next) => {
+  res.status(404).json({ message: 'Route tidak ditemukan' });
+});
+
+app.use((err, req, res, next) => {
+  res.status(err.status || 500).json({
+    message: err.message || 'Internal Server Error'
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Server sedang berjalan di port ${PORT}`);
+});
+
+export default app;
