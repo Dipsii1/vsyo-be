@@ -7,51 +7,68 @@ datasource db {
   provider = "postgresql"
 }
 
-model Role {
-  id    Int    @id @default(autoincrement())
-  name  String @unique
-
-  users User[]
-}
-
-model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String?
-  provider  String   @default("local")
-  googleId  String?
-  roleId    Int
-  role      Role     @relation(fields: [roleId], references: [id])
-  products  Product[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Product {
-  id          Int      @id @default(autoincrement())
-  name        String
-  description String?
-  price       Float
-  stock       Int      @default(0)
-
-  size        Size
-  color       String
-  material    String?
-
-  shopeeUrl   String
-
-  createdById Int
-  createdBy   User     @relation(fields: [createdById], references: [id])
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
 
 enum Size {
+  XS
   S
   M
   L
   XL
   XXL
+}
+
+enum Provider {
+  local
+  google
+}
+
+
+model Role {
+  id    Int    @id @default(autoincrement())
+  name  String @unique  
+  users User[]
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  password  String?
+  provider  Provider  @default(local)
+  googleId  String?   @unique
+  roleId    Int
+  role      Role      @relation(fields: [roleId], references: [id])
+
+  products  Product[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Product {
+  id          Int            @id @default(autoincrement())
+  name        String
+  description String?
+  price       Float
+  stock       Int            @default(0)
+  size        Size
+  color       String
+  material    String?
+  shopeeUrl   String
+
+  images      ProductImage[]
+
+  createdById Int
+  createdBy   User           @relation(fields: [createdById], references: [id])
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model ProductImage {
+  id        Int     @id @default(autoincrement())
+  url       String
+  isPrimary Boolean @default(false)
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 }

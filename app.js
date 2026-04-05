@@ -42,6 +42,10 @@ app.use('/', indexRouter);
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/products', productsRouter);
 
+
+// multer setup
+app.use("/uploads", express.static("uploads"));
+
 // Error handlers
 app.use((req, res, next) => {
   res.status(404).json({ message: 'Route tidak ditemukan' });

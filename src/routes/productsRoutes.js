@@ -8,12 +8,9 @@ import {
 } from "../controllers/productsControllers.js";
 
 import { authenticate, authorize } from "../middlewares/auth.js";
+import upload from "../middlewares/upload.js";
 
 const router = express.Router();
-
-// ==============================
-// Public routes
-// ==============================
 
 // ambil semua produk
 router.get("/", getAllProducts);
@@ -21,17 +18,30 @@ router.get("/", getAllProducts);
 // ambil produk berdasarkan id
 router.get("/:id", getProductById);
 
-// ==============================
-// Protected routes (ADMIN)
-// ==============================
+// tambah produk + upload gambar
+router.post(
+  "/",
+  authenticate,
+  authorize("ADMIN"),
+  upload.array("images", 5), // max 5 gambar
+  createProduct
+);
 
-// tambah produk
-router.post("/", authenticate, authorize("ADMIN"), createProduct);
-
-// update produk
-router.put("/:id", authenticate, authorize("ADMIN"), updateProduct);
+// update produk + optional upload gambar baru
+router.put(
+  "/:id",
+  authenticate,
+  authorize("ADMIN"),
+  upload.array("images", 5),
+  updateProduct
+);
 
 // hapus produk
-router.delete("/:id", authenticate, authorize("ADMIN"), deleteProduct);
+router.delete(
+  "/:id",
+  authenticate,
+  authorize("ADMIN"),
+  deleteProduct
+);
 
 export default router;
