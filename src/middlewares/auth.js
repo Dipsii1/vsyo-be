@@ -1,6 +1,10 @@
 import jwt from "jsonwebtoken";
+import prisma from "../config/prismaClient.js";
 
-export const authenticate = (req, res, next) => {
+// ==============================
+// Middleware: Authenticate
+// ==============================
+export const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   // cek apakah header ada dan format Bearer
@@ -17,13 +21,27 @@ export const authenticate = (req, res, next) => {
     // verifikasi token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // simpan payload ke req.user
-    req.user = decoded;
+    // ambil user + role dari database
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      include: { role: true },
+    });
+
+    // cek user
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "User tidak ditemukan.",
+      });
+    }
+
+    // simpan ke req.user
+    req.user = user;
 
     next();
   } catch (error) {
 
-    // handle token expired secara spesifik
+    // handle token expired
     if (error instanceof jwt.TokenExpiredError) {
       return res.status(401).json({
         success: false,
@@ -39,7 +57,9 @@ export const authenticate = (req, res, next) => {
   }
 };
 
-
+// ==============================
+// Middleware: Authorize
+// ==============================
 export const authorize = (...roles) => {
   return (req, res, next) => {
 
@@ -51,8 +71,11 @@ export const authorize = (...roles) => {
       });
     }
 
-    // cek apakah role user termasuk yang diizinkan
-    if (!roles.includes(req.user.role)) {
+    // ambil role dari database
+    const userRole = req.user.role?.name;
+
+    // cek apakah role diizinkan
+    if (!roles.includes(userRole)) {
       return res.status(403).json({
         success: false,
         message: "Anda tidak memiliki akses untuk melakukan aksi ini.",

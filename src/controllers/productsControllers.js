@@ -3,7 +3,7 @@ import prisma from "../config/prismaClient.js";
 
 
 // get all products
-const getAllProducts = async (req, req) => {
+const getAllProducts = async (req, res) => {
     try {
         const products = await prisma.product.findMany();
         res.status(200).json({
@@ -106,7 +106,7 @@ const createProduct = async (req, res) => {
 
 
 // update product by id
-export const updateProduct = async (req, res) => {
+const updateProduct = async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -161,7 +161,7 @@ export const updateProduct = async (req, res) => {
     }
 };
 
-export const deleteProduct = async (req, res) => {
+const deleteProduct = async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -194,3 +194,5 @@ export const deleteProduct = async (req, res) => {
         });
     }
 };
+
+export { getAllProducts, getProductById, createProduct, updateProduct, deleteProduct };
