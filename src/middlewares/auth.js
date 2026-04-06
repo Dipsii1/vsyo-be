@@ -7,7 +7,6 @@ import prisma from "../config/prismaClient.js";
 export const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
-  // cek apakah header ada dan format Bearer
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({
       success: false,
@@ -18,16 +17,13 @@ export const authenticate = async (req, res, next) => {
   const token = authHeader.split(" ")[1];
 
   try {
-    // verifikasi token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // ambil user + role dari database
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },
       include: { role: true },
     });
 
-    // cek user
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -35,21 +31,15 @@ export const authenticate = async (req, res, next) => {
       });
     }
 
-    // simpan ke req.user
     req.user = user;
-
     next();
   } catch (error) {
-
-    // handle token expired
     if (error instanceof jwt.TokenExpiredError) {
       return res.status(401).json({
         success: false,
         message: "Token sudah kedaluwarsa. Silakan login ulang.",
       });
     }
-
-    // handle token invalid
     return res.status(401).json({
       success: false,
       message: "Token tidak valid.",
@@ -62,8 +52,6 @@ export const authenticate = async (req, res, next) => {
 // ==============================
 export const authorize = (...roles) => {
   return (req, res, next) => {
-
-    // pastikan user sudah login
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -71,11 +59,11 @@ export const authorize = (...roles) => {
       });
     }
 
-    // ambil role dari database
-    const userRole = req.user.role?.name;
+    // normalize ke uppercase — cocok dengan apapun yang ada di DB
+    const userRole = req.user.role?.name?.toUpperCase();
+    const allowed  = roles.map((r) => r.toUpperCase());
 
-    // cek apakah role diizinkan
-    if (!roles.includes(userRole)) {
+    if (!allowed.includes(userRole)) {
       return res.status(403).json({
         success: false,
         message: "Anda tidak memiliki akses untuk melakukan aksi ini.",

@@ -11,6 +11,7 @@ const getAllProducts = async (req, res) => {
     const products = await prisma.product.findMany({
       include: {
         images: true,
+        sizes:true,
       },
     });
 
@@ -40,6 +41,7 @@ const getProductById = async (req, res) => {
       where: { id: parseInt(id) },
       include: {
         images: true,
+        sizes:true
       },
     });
 
@@ -75,54 +77,52 @@ const createProduct = async (req, res) => {
       description,
       price,
       stock,
-      size,
+      sizes,
       color,
       material,
       shopeeUrl,
     } = req.body;
 
-    // validasi field wajib
-    if (!name || !price || !size || !color || !shopeeUrl) {
+    if (!name || !price || !sizes || !color || !shopeeUrl) {
       return res.status(400).json({
         success: false,
         message: "Field wajib tidak lengkap",
       });
     }
 
-    // ambil file dari multer (default array kosong)
+    const parsedSizes = JSON.parse(sizes); // dari FormData
+
     const files = req.files || [];
 
-    // mapping data image jika ada
-    const imageData =
-      files.length > 0
-        ? files.map((file, index) => ({
-            url: `/uploads/${file.filename}`,
-            isPrimary: index === 0, // gambar pertama jadi utama
-          }))
-        : [];
+    const imageData = files.map((file, index) => ({
+      url: `/uploads/${file.filename}`,
+      isPrimary: index === 0,
+    }));
 
-    // create product + images
     const product = await prisma.product.create({
       data: {
         name,
         description,
         price: parseFloat(price),
         stock: stock ? parseInt(stock) : 0,
-        size: size.toUpperCase(), // pastikan sesuai enum
         color,
         material,
         shopeeUrl,
         createdById: req.user.id,
 
-        // hanya insert jika ada gambar
+        sizes: {
+          create: parsedSizes.map((s) => ({
+            size: s.toUpperCase(),
+          })),
+        },
+
         ...(imageData.length > 0 && {
-          images: {
-            create: imageData,
-          },
+          images: { create: imageData },
         }),
       },
       include: {
         images: true,
+        sizes: true,
       },
     });
 
@@ -132,7 +132,7 @@ const createProduct = async (req, res) => {
       data: product,
     });
   } catch (error) {
-    console.error("Error creating product:", error);
+    console.error(error);
     res.status(500).json({
       success: false,
       message: "Error creating product",
@@ -152,17 +152,17 @@ const updateProduct = async (req, res) => {
       description,
       price,
       stock,
-      size,
+      sizes,
       color,
       material,
       shopeeUrl,
     } = req.body;
 
-    // cek produk lama
     const existingProduct = await prisma.product.findUnique({
       where: { id: parseInt(id) },
       include: {
         images: true,
+        sizes: true,
       },
     });
 
@@ -173,28 +173,23 @@ const updateProduct = async (req, res) => {
       });
     }
 
-    // ambil file baru dari multer
     const files = req.files || [];
-
     let imageData = [];
 
-    // jika upload gambar baru
     if (files.length > 0) {
       imageData = files.map((file, index) => ({
         url: `/uploads/${file.filename}`,
         isPrimary: index === 0,
       }));
 
-      // hapus file lama dari folder
       existingProduct.images.forEach((img) => {
         const filePath = path.join("uploads", path.basename(img.url));
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       });
     }
 
-    // update data
+    const parsedSizes = sizes ? JSON.parse(sizes) : null;
+
     const updatedProduct = await prisma.product.update({
       where: { id: parseInt(id) },
       data: {
@@ -202,21 +197,29 @@ const updateProduct = async (req, res) => {
         description: description ?? existingProduct.description,
         price: price ? parseFloat(price) : existingProduct.price,
         stock: stock ? parseInt(stock) : existingProduct.stock,
-        size: size ? size.toUpperCase() : existingProduct.size,
         color: color ?? existingProduct.color,
         material: material ?? existingProduct.material,
         shopeeUrl: shopeeUrl ?? existingProduct.shopeeUrl,
 
-        // replace images jika ada upload baru
+        ...(parsedSizes && {
+          sizes: {
+            deleteMany: {}, // hapus lama
+            create: parsedSizes.map((s) => ({
+              size: s.toUpperCase(),
+            })),
+          },
+        }),
+
         ...(imageData.length > 0 && {
           images: {
-            deleteMany: {}, // hapus relasi lama
+            deleteMany: {},
             create: imageData,
           },
         }),
       },
       include: {
         images: true,
+        sizes: true,
       },
     });
 
@@ -226,7 +229,7 @@ const updateProduct = async (req, res) => {
       data: updatedProduct,
     });
   } catch (error) {
-    console.error("Error updating product:", error);
+    console.error(error);
     res.status(500).json({
       success: false,
       message: "Error updating product",

@@ -1,91 +1,67 @@
 import prisma from "./src/config/prismaClient.js";
-import bcrypt from "bcrypt";
 
 async function main() {
-  console.log("Mulai seeding...");
+  console.log("🌱 Start seeding...");
 
-  // ==============================
-  // 1. ROLE
-  // ==============================
+  // ROLE
   const adminRole = await prisma.role.upsert({
     where: { name: "ADMIN" },
     update: {},
     create: { name: "ADMIN" },
   });
 
-  const userRole = await prisma.role.upsert({
-    where: { name: "USER" },
-    update: {},
-    create: { name: "USER" },
-  });
-
-  console.log("Role berhasil dibuat");
-
-  // ==============================
-  // 2. USER
-  // ==============================
-  const hashedPassword = await bcrypt.hash("123456", 10);
-
-  const admin = await prisma.user.upsert({
-    where: { email: "admin@gmail.com" },
+  // USER
+  const user = await prisma.user.upsert({
+    where: { email: "admin@vsyo.com" },
     update: {},
     create: {
-      email: "admin@gmail.com",
-      password: hashedPassword,
+      email: "admin@vsyo.com",
+      password: "123456",
       roleId: adminRole.id,
     },
   });
 
-  const user = await prisma.user.upsert({
-    where: { email: "user@gmail.com" },
-    update: {},
-    create: {
-      email: "user@gmail.com",
-      password: hashedPassword,
-      roleId: userRole.id,
+  // PRODUCT
+  await prisma.product.create({
+    data: {
+      name: "VSYO Classic Tee",
+      description: "Basic t-shirt premium cotton",
+      price: 150000,
+      stock: 20,
+      color: "black",
+      material: "100% cotton",
+      shopeeUrl: "https://shopee.co.id/product-1",
+      createdById: user.id,
+
+      sizes: {
+        create: [
+          { size: "M" },
+          { size: "L" },
+          { size: "XL" },
+        ],
+      },
+
+      images: {
+        create: [
+          {
+            url: "/uploads/sample1.jpg",
+            isPrimary: true,
+          },
+          {
+            url: "/uploads/sample2.jpg",
+            isPrimary: false,
+          },
+        ],
+      },
     },
   });
 
-  console.log("User berhasil dibuat");
-
-  // ==============================
-  // 3. PRODUCT
-  // ==============================
-  await prisma.product.createMany({
-    data: [
-      {
-        name: "Kaos Polos Hitam",
-        description: "Bahan cotton premium",
-        price: 50000,
-        stock: 10,
-        size: "L",
-        color: "Hitam",
-        material: "Cotton",
-        shopeeUrl: "https://shopee.co.id/contoh1",
-        createdById: admin.id,
-      },
-      {
-        name: "Kaos Putih Oversize",
-        description: "Nyaman dipakai",
-        price: 75000,
-        stock: 5,
-        size: "XL",
-        color: "Putih",
-        material: "Combed 30s",
-        shopeeUrl: "https://shopee.co.id/contoh2",
-        createdById: admin.id,
-      },
-    ],
-  });
-
-  console.log("Product berhasil dibuat");
-  console.log("Seeding selesai");
+  console.log("✅ Seeding selesai!");
 }
 
 main()
   .catch((e) => {
-    console.error("Error seeding:", e);
-    process.exit(1);
+    console.error("❌ Error seeding:", e);
   })
   .finally(async () => {
     await prisma.$disconnect();
