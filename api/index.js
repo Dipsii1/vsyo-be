@@ -38,8 +38,8 @@ app.use("/uploads", express.static("uploads"));
 // ROUTES
 
 app.use("/", indexRouter);
-app.use("/api/v1/auth", authRouter);
-app.use("/api/v1/products", productsRouter);
+app.use("/v1/auth", authRouter);
+app.use("/v1/products", productsRouter);
 
 
 // HEALTH CHECK (BIAR CEPAT TEST)
