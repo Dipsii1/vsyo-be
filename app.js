@@ -22,10 +22,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
+
 // routes
 app.use("/", indexRouter);
-app.use("/api/v1/auth", authRouter);
-app.use("/api/v1/products", productsRouter);
+app.use("/v1/auth", authRouter);
+app.use("/v1/products", productsRouter);
 
 // error handler
 app.use((req, res) => {
