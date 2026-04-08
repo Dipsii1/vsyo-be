@@ -24,7 +24,7 @@ app.set('view engine', 'pug');
 // Enable CORS
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: ["http://localhost:3000", "https://vsyo-fe.vercel.app"],
     credentials: true,
   })
 );

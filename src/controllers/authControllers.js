@@ -342,4 +342,40 @@ const loginWithGoogle = async (req, res) => {
   }
 };
 
-export { registerUser, loginUser, registerWithGoogle, loginWithGoogle };
+// me 
+
+
+const getMe = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const user = await prisma.user.findUnique({
+      where:{ id: userId},
+      select:{
+        id: true,
+        email: true,
+        provider: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "User profile fetched successfully",
+      data: user
+    })
+
+
+
+  } catch (error) {
+    console.error("Error fetching user profile", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+}
+
+export { registerUser, loginUser, registerWithGoogle, loginWithGoogle, getMe };
