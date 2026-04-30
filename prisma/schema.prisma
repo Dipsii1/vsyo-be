@@ -67,6 +67,7 @@ model Product {
 model ProductImage {
   id        Int     @id @default(autoincrement())
   url       String
+  fileId    String?           
   isPrimary Boolean @default(false)
 
   productId Int

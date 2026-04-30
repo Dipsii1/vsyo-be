@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import logger from "morgan";
+import multer from "multer";
 
 // routes
 import indexRouter from "./src/routes/index.js";
@@ -10,6 +11,7 @@ import productsRouter from "./src/routes/productsRoutes.js";
 
 const app = express();
 
+// middleware
 app.use(
   cors({
     origin: ["http://localhost:3000", "https://vsyo-fe.vercel.app"],
@@ -22,22 +24,49 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
+// disable cache
+app.use((req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
 
 // routes
 app.use("/", indexRouter);
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/products", productsRouter);
 
-// error handler
+// 404 handler
 app.use((req, res) => {
   res.status(404).json({ message: "Route tidak ditemukan" });
 });
 
+// FIX #7: Tangani MulterError secara terpisah agar pesan error upload lebih informatif
 app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    // Contoh: file terlalu besar → "File too large"
+    return res.status(400).json({
+      success: false,
+      message: `Upload error: ${err.message}`,
+    });
+  }
+
+  // Error dari fileFilter (misal: format file tidak didukung)
+  if (err && err.message === "Only images allowed!") {
+    return res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+
   console.error(err);
   res.status(err.status || 500).json({
     message: err.message || "Internal Server Error",
   });
 });
 
-export default app;
+// start server
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});

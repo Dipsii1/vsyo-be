@@ -1,34 +1,29 @@
 import multer from "multer";
-import path from "path";
+import ImageKit from "imagekit";
 
-// storage config
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, "uploads/"); // folder penyimpanan
-    },
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname);
-        const filename = Date.now() + "-" + Math.round(Math.random() * 1e9) + ext;
-        cb(null, filename);
-    },
+export const imagekit = new ImageKit({
+  publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
+  privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
+  urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
 });
 
-// filter file (optional)
+const storage = multer.memoryStorage();
+
 const fileFilter = (req, file, cb) => {
-    const allowedExtensions = /jpeg|jpg|png|webp/;
-    const ext = allowedExtensions.test(
-        path.extname(file.originalname).toLowerCase()
-    );
-    if (ext) cb(null, true);
-    else cb(new Error("Only images allowed!"));
+  const allowedMime = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+  if (allowedMime.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only images allowed!"));
+  }
 };
 
 const upload = multer({
-    storage,
-    fileFilter,
-    limits: {
-        fileSize: 5 * 1024 * 1024, // max 2MB
-    },
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
 });
 
 export default upload;

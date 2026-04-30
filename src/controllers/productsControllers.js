@@ -1,17 +1,14 @@
 import prisma from "../config/prismaClient.js";
-import fs from "fs";
-import path from "path";
-
+import { uploadToImageKit, deleteImagesFromImageKit } from "../helper/imageKit.js";
 
 // GET ALL PRODUCTS
 
 const getAllProducts = async (req, res) => {
   try {
-    // ambil semua produk + relasi images
     const products = await prisma.product.findMany({
       include: {
         images: true,
-        sizes:true,
+        sizes: true,
       },
     });
 
@@ -36,16 +33,14 @@ const getProductById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // ambil produk + images
     const product = await prisma.product.findUnique({
       where: { id: parseInt(id) },
       include: {
         images: true,
-        sizes:true
+        sizes: true,
       },
     });
 
-    // cek jika tidak ditemukan
     if (!product) {
       return res.status(404).json({
         success: false,
@@ -90,14 +85,12 @@ const createProduct = async (req, res) => {
       });
     }
 
-    const parsedSizes = JSON.parse(sizes); // dari FormData
-
+    const parsedSizes = JSON.parse(sizes);
     const files = req.files || [];
 
-    const imageData = files.map((file, index) => ({
-      url: `/uploads/${file.filename}`,
-      isPrimary: index === 0,
-    }));
+    const imageData = await Promise.all(
+      files.map((file, index) => uploadToImageKit(file, index))
+    );
 
     const product = await prisma.product.create({
       data: {
@@ -177,15 +170,13 @@ const updateProduct = async (req, res) => {
     let imageData = [];
 
     if (files.length > 0) {
-      imageData = files.map((file, index) => ({
-        url: `/uploads/${file.filename}`,
-        isPrimary: index === 0,
-      }));
+      // Hapus gambar lama dari ImageKit
+      await deleteImagesFromImageKit(existingProduct.images);
 
-      existingProduct.images.forEach((img) => {
-        const filePath = path.join("uploads", path.basename(img.url));
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      });
+      // Upload gambar baru ke ImageKit
+      imageData = await Promise.all(
+        files.map((file, index) => uploadToImageKit(file, index))
+      );
     }
 
     const parsedSizes = sizes ? JSON.parse(sizes) : null;
@@ -203,7 +194,7 @@ const updateProduct = async (req, res) => {
 
         ...(parsedSizes && {
           sizes: {
-            deleteMany: {}, // hapus lama
+            deleteMany: {},
             create: parsedSizes.map((s) => ({
               size: s.toUpperCase(),
             })),
@@ -244,7 +235,6 @@ const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // ambil produk + images
     const existingProduct = await prisma.product.findUnique({
       where: { id: parseInt(id) },
       include: {
@@ -259,15 +249,9 @@ const deleteProduct = async (req, res) => {
       });
     }
 
-    // hapus file dari folder uploads
-    existingProduct.images.forEach((img) => {
-      const filePath = path.join("uploads", path.basename(img.url));
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    });
+    // Hapus semua gambar dari ImageKit
+    await deleteImagesFromImageKit(existingProduct.images);
 
-    // hapus produk (images ikut kehapus karena cascade)
     await prisma.product.delete({
       where: { id: parseInt(id) },
     });

@@ -90,7 +90,7 @@ const registerUser = async (req, res) => {
 // register user with google
 const registerWithGoogle = async (req, res) => {
   try {
-    const { idToken } = req.body; // hapus password (tidak diperlukan untuk Google)
+    const { idToken } = req.body;
 
     // validasi token google
     if (!idToken) {
@@ -126,26 +126,23 @@ const registerWithGoogle = async (req, res) => {
     }
 
     // cek user apakah sudah ada
-    let existingUser = await prisma.user.findUnique({
+    const existingUser = await prisma.user.findUnique({
       where: { email }
     });
 
-    // jika user sudah ada tapi belum punya googleId → link account
+    // FIX #1: Gunakan else if agar blok kedua tidak ikut terjalan setelah linking.
+    // FIX #3: Jika user sudah ada tapi provider-nya "local", tolak dengan pesan yang jelas
+    //         daripada diam-diam menimpa data mereka.
     if (existingUser && !existingUser.googleId) {
-      existingUser = await prisma.user.update({
-        where: { email },
-        data: {
-          googleId,
-          provider: "google"
-        }
-      });
-    }
-
-    // jika user sudah ada dan memang google
-    if (existingUser && existingUser.googleId) {
       return res.status(400).json({
         success: false,
-        message: "User already exists"
+        message: "An account with this email already exists. Please log in with your password."
+      });
+    } else if (existingUser && existingUser.googleId) {
+      // user sudah terdaftar via Google sebelumnya
+      return res.status(400).json({
+        success: false,
+        message: "User already exists. Please log in instead."
       });
     }
 
@@ -307,11 +304,11 @@ const loginWithGoogle = async (req, res) => {
       });
     }
 
-    // pastikan akun memang Google
-    if (user.provider !== "google") {
+    // FIX #4: Cek googleId (bukan provider) supaya akun yang di-link juga bisa login Google
+    if (!user.googleId) {
       return res.status(400).json({
         success: false,
-        message: "This account is not registered with Google"
+        message: "This account is not registered with Google. Please login with your password."
       });
     }
 
@@ -342,16 +339,14 @@ const loginWithGoogle = async (req, res) => {
   }
 };
 
-// me 
-
-
+// me
 const getMe = async (req, res) => {
   try {
     const userId = req.user.id;
 
     const user = await prisma.user.findUnique({
-      where:{ id: userId},
-      select:{
+      where: { id: userId },
+      select: {
         id: true,
         email: true,
         provider: true,
@@ -361,13 +356,19 @@ const getMe = async (req, res) => {
       }
     });
 
+    // FIX #8: Handle jika user tidak ditemukan di DB
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
     return res.status(200).json({
       success: true,
       message: "User profile fetched successfully",
       data: user
-    })
-
-
+    });
 
   } catch (error) {
     console.error("Error fetching user profile", error);
@@ -376,6 +377,6 @@ const getMe = async (req, res) => {
       message: "Internal server error"
     });
   }
-}
+};
 
 export { registerUser, loginUser, registerWithGoogle, loginWithGoogle, getMe };

@@ -1,5 +1,6 @@
 import express from "express";
 import { registerUser, loginUser, registerWithGoogle, loginWithGoogle, getMe } from "../controllers/authControllers.js";
+import { authenticate } from "../middlewares/auth.js";
 
 const router = express.Router();
 
@@ -11,7 +12,7 @@ router.post("/register/google", registerWithGoogle);
 router.post("/login", loginUser);
 router.post("/login/google", loginWithGoogle);
 
-// get me
-router.get("/me", getMe);
+// FIX #2: Tambah middleware authenticate agar req.user tersedia di getMe
+router.get("/me", authenticate, getMe);
 
 export default router;
