@@ -40,17 +40,15 @@ app.use((req, res) => {
   res.status(404).json({ message: "Route tidak ditemukan" });
 });
 
-// FIX #7: Tangani MulterError secara terpisah agar pesan error upload lebih informatif
+// error handler
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
-    // Contoh: file terlalu besar → "File too large"
     return res.status(400).json({
       success: false,
       message: `Upload error: ${err.message}`,
     });
   }
 
-  // Error dari fileFilter (misal: format file tidak didukung)
   if (err && err.message === "Only images allowed!") {
     return res.status(400).json({
       success: false,
@@ -64,9 +62,12 @@ app.use((err, req, res, next) => {
   });
 });
 
-// start server
-const PORT = process.env.PORT || 5000;
+// Untuk local development
+if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+export default app;
